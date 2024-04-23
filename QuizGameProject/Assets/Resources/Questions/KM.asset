@@ -12,15 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe1e3773ddaa9ce48835846fb8e11c7f, type: 3}
   m_Name: KM
   m_EditorClassIdentifier: 
-  _info: 1km is equal to ..
+  _info: 'Solve: 133 - 19 * 2 + 15'
   _answers:
-  - _info: 10m
+  - _info: 243
     _isCorrect: 0
-  - _info: 100m
+  - _info: 116
     _isCorrect: 0
-  - _info: 1000m
+  - _info: 110
     _isCorrect: 1
-  _useTimer: 0
-  _timer: 0
+  _useTimer: 1
+  _timer: 25
   _answerType: 1
-  _addScore: 10
+  _addScore: 15
