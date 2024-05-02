@@ -4,32 +4,37 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Networking;
+using UnityEngine.Events;
+using System.Text;
+using SimpleJSON;
 
-public class GameManager : MonoBehaviour {
+public class GameManager : MonoBehaviour
+{
 
     #region Variables
 
-    private             Question[]          _questions              = null;
-    public              Question[]          Questions               { get { return _questions; } }
+    private Question[] _questions = null;
+    public Question[] Questions { get { return _questions; } }
 
-    [SerializeField]    GameEvents          events                  = null;
+    [SerializeField] GameEvents events = null;
 
-    [SerializeField]    Animator            timerAnimtor            = null;
-    [SerializeField]    TextMeshProUGUI     timerText               = null;
-    [SerializeField]    Color               timerHalfWayOutColor    = Color.yellow;
-    [SerializeField]    Color               timerAlmostOutColor     = Color.red;
-    private             Color               timerDefaultColor       = Color.white;
+    [SerializeField] Animator timerAnimtor = null;
+    [SerializeField] TextMeshProUGUI timerText = null;
+    [SerializeField] Color timerHalfWayOutColor = Color.yellow;
+    [SerializeField] Color timerAlmostOutColor = Color.red;
+    private Color timerDefaultColor = Color.white;
 
-    private             List<AnswerData>    PickedAnswers           = new List<AnswerData>();
-    private             List<int>           FinishedQuestions       = new List<int>();
-    private             int                 currentQuestion         = 0;
+    private List<AnswerData> PickedAnswers = new List<AnswerData>();
+    private List<int> FinishedQuestions = new List<int>();
+    private int currentQuestion = 0;
 
-    private             int                 timerStateParaHash      = 0;
+    private int timerStateParaHash = 0;
 
-    private             IEnumerator         IE_WaitTillNextRound    = null;
-    private             IEnumerator         IE_StartTimer           = null;
+    private IEnumerator IE_WaitTillNextRound = null;
+    private IEnumerator IE_StartTimer = null;
 
-    private             bool                IsFinished
+    private bool IsFinished
     {
         get
         {
@@ -40,6 +45,11 @@ public class GameManager : MonoBehaviour {
     #endregion
 
     #region Default Unity methods
+
+    public void FinishGame()
+    {
+        events.onGameCompleted.Invoke(true);
+    }
 
     /// <summary>
     /// Function that is called when the object becomes enabled and active
@@ -133,7 +143,8 @@ public class GameManager : MonoBehaviour {
         if (events.UpdateQuestionUI != null)
         {
             events.UpdateQuestionUI(question);
-        } else { Debug.LogWarning("Ups! Something went wrong while trying to display new Question UI Data. GameEvents.UpdateQuestionUI is null. Issue occured in GameManager.Display() method."); }
+        }
+        else { Debug.LogWarning("Ups! Something went wrong while trying to display new Question UI Data. GameEvents.UpdateQuestionUI is null. Issue occured in GameManager.Display() method."); }
 
         if (question.UseTimer)
         {
@@ -155,12 +166,15 @@ public class GameManager : MonoBehaviour {
         if (IsFinished)
         {
             SetHighscore();
+            StartCoroutine(SendScoreToServer(events.CurrentFinalScore));
+
+            FinishGame();
         }
 
-        var type 
-            = (IsFinished) 
-            ? UIManager.ResolutionScreenType.Finish 
-            : (isCorrect) ? UIManager.ResolutionScreenType.Correct 
+        var type
+            = (IsFinished)
+            ? UIManager.ResolutionScreenType.Finish
+            : (isCorrect) ? UIManager.ResolutionScreenType.Correct
             : UIManager.ResolutionScreenType.Incorrect;
 
         if (events.DisplayResolutionScreen != null)
@@ -338,6 +352,37 @@ public class GameManager : MonoBehaviour {
             } while (FinishedQuestions.Contains(random) || random == currentQuestion);
         }
         return random;
+    }
+
+    private const string serverURL = "http://localhost:8081/updateScore";
+
+    private IEnumerator SendScoreToServer(int score)
+    {
+        JSONObject json = new JSONObject();
+        json.Add("score", score);
+
+        string jsonStr = json.ToString();
+
+       using (UnityWebRequest req = UnityWebRequest.PostWwwForm(serverURL, "POST"))
+       {
+            req.SetRequestHeader("Content-Type", "application/json");
+
+            byte[] rawJson = Encoding.UTF8.GetBytes(jsonStr);
+            req.uploadHandler = new UploadHandlerRaw(rawJson);
+            req.downloadHandler = new DownloadHandlerBuffer();
+            req.SetRequestHeader("Content-Type", "application/json");
+
+            yield return req.SendWebRequest();
+
+            if(req.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("Error sending score: " + req.error);
+            }
+            else
+            {
+                Debug.Log("Score sent successfully!");
+            }
+       }
     }
 
     #endregion
